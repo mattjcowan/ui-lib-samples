@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Rendering Large Datasets With Vue.js</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="demo.css">
+</head>
+<body>
+  <h1>Rendering Large Datasets With jQuery</h1>
+
+  <div id="content"></div>
+  
+  <!-- Load scripts. -->
+  <script src="https://code.jquery.com/jquery-1.12.2.min.js"></script>
+  <script src="shared.js"></script>
+  <script>  
+  
+    $(function() {
+        
+        var jqStore = function() {
+            
+            var grid = generateGrid(1000, 10)
+            var initialState = { grid: grid, dataPoints: grid.length * grid[0].items.length, filter: '' };
+            var state = $.extend({}, initialState);
+             
+            return {
+                filterGrid: function(filter) { state.filter = filter; return state; },
+                resetState: function(s) { state = $.extend({}, s); return state; },
+                getState: function() { return state; },
+                getInitialState: function() { return initialState; },
+                getBlankState: function() { return {grid: [], dataPoints: 0, filter: ''} }
+            }
+        
+        }();
+        
+        var GridComponent = $( "<table/>" )
+            .on('stateChanged', function(args) {
+                var visibleCount = getVisibileCount(args.filter, args.grid);
+                FormComponent.trigger($.extend({ type: 'stateChanged' }, {filter: args.filter, dataPoints: args.dataPoints, visibleCount: visibleCount}));
+                
+                var grid = $(this).removeClass('filtered');
+                if(args.filter && args.filter.length > 0) grid.addClass('filtered');
+                if(grid.find('tr').length == 0) {
+                    $.each(args.grid, function(rowIndex, row) {
+                        var tr = $("<tr/>").append($("<th/>").text(row.id));
+                        $.each(row.items, function(itemIndex, item) {
+                            tr.append($("<td/>").text(item.value).data('id', item.id).data('value', item.value).addClass('item'));
+                        });
+                        grid.append(tr);
+                    });
+                } else {
+                    if(args.dataPoints == 0) {
+                        grid.empty();
+                    } else {
+                        grid.find('tr td').each(function() {
+                            var td = $(this);
+                            var val = td.data('value');
+                            td.removeClass('hidden');
+                            if(!!args.filter && val.indexOf(args.filter) === -1) {
+                                td.addClass('hidden');
+                            }
+                        });
+                    }
+                }
+            })
+        
+        var FormComponent = $( "<form/>" )
+            .append("<strong>Filter Data</strong>: ")
+            .append(
+                // handle as many types of changes as possible (copy/paste/right-click/etc...)
+                $("<input />").bind('propertychange change click keyup input paste', function() { 
+                    var el = $(this), val = el.val(), oldVal = el.data('oldVal'), ft = typeof oldVal == "undefined";
+                    if(ft || oldVal != val) {
+                        el.data('oldVal', val);
+                        if (!ft || val.length > 0) {
+                            GridComponent.trigger($.extend({ type: 'stateChanged' }, jqStore.filterGrid(val)));
+                        }
+                    }
+                })
+            )
+            .append($("<span /> ").addClass('info'))
+            .append($("<a/>").on('click', function() {
+                var currentlyMounted = jqStore.getState().dataPoints > 0;
+                jqStore.resetState(currentlyMounted ? jqStore.getBlankState(): jqStore.getInitialState());
+                $(this).text(currentlyMounted ? 'Remount Grid': 'Unmount Grid');
+                GridComponent.trigger($.extend({ type: 'stateChanged' }, jqStore.getState()));
+            }).text('Unmount Grid'))
+            .on('stateChanged', function(args) {
+                if(!!args.filter) { 
+                    $(this).find('span.info').html(' &mdash; Filtering <strong>' + args.filter + '</strong> over ' + args.dataPoints + ' data points, ' + args.visibleCount + ' found. ').show();                    
+                } else {
+                    $(this).find('span.info').html(' ');
+                }
+            });
+        
+        var DemoComponent = $("#content")
+            .append(FormComponent)
+            .append(GridComponent);
+    
+        GridComponent.trigger($.extend({ type: 'stateChanged' }, jqStore.getInitialState()));
+
+    });
+    
+  </script>
+  
+  <a href="https://github.com/insin/ui-lib-samples/blob/master/large-datasets/jquery.html" target="_top">
+    <img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub">
+  </a>
+</body>
+</html>

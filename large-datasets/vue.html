@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Rendering Large Datasets With Vue.js</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="demo.css">
+</head>
+<body>
+  <h1>Rendering Large Datasets With Vue.js</h1>
+  <p>
+      <span>Implementation #1</span> | 
+      <a href="vue.2.html">Implementation #2 (using $watch)</a>
+  </p>
+
+  <div id="content"></div>
+  
+  <script type="text/x-template" id="demo-grid">
+    <table width="100%" cellspacing="2" :class="{filtered: !!filterKey}">
+        <tr v-for="row in data" track-by="id">
+            <th>{{ row.id }}</th>
+            <td v-for="item in row.items" track-by="id" class="item"
+                :class="{hidden: !!filterKey && item.value.indexOf(filterKey) === -1}">
+                {{ item.value }}
+            </td>
+        </tr>
+    </table>
+  </script>
+  
+  <script type="text/x-template" id="demo">
+    <form id="search">
+        <strong>Filter Data</strong>:
+        <input type="text" v-model="filter">
+        
+        <span v-if="!!filter">
+        &mdash;
+        Filtering <strong>{{ filter }}</strong>
+        over {{ dataPoints }} data points,
+        {{ visibleCount }} found.
+        </span>
+
+        <a v-if="dataPoints > 0" v-on:click.stop="unmountGrid">Unmount Grid</a>
+        <a v-if="dataPoints == 0" v-on:click.stop="mountGrid">Remount Grid</a>
+    </form>
+
+    <demo-grid
+        :data="grid"
+        :filter-key="filter">
+    </demo-grid>
+  </script>
+  
+  <!-- Load scripts. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/1.0.20/vue.min.js"></script>
+  <script src="shared.js"></script>
+  <script>  
+    
+    var DemoComponent = Vue.extend({
+        template: '#demo',
+        data: function() { return this.getInitialState(); },
+        computed: {
+            visibleCount: function() {
+                return !!this.filter && getVisibileCount(this.filter, this.grid);
+            }
+        },
+        methods: {
+            getInitialState: function() {
+                var gridData = generateGrid(1000, 10);
+                return { filter: '', grid: gridData, dataPoints: gridData.length * gridData[0].items.length }
+            },
+            unmountGrid: function() { this.$data = {filter: '', grid: [], dataPoints: 0}; },
+            mountGrid: function() { this.$data = this.getInitialState(); }
+        },
+        components: {
+            'demo-grid': {
+                template: '#demo-grid',
+                props: { data: Array, filterKey: String }
+            }
+        }
+    })
+    
+    new DemoComponent({ el: '#content' });
+    
+  </script>
+  
+  <a href="https://github.com/insin/ui-lib-samples/blob/master/large-datasets/vue.html" target="_top">
+    <img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub">
+  </a>
+</body>
+</html>
